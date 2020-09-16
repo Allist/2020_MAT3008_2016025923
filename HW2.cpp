@@ -55,9 +55,20 @@ void UsingExactDerivatives(void)
         double errorX = abs(x * 100);
         
         while(interval < errorX){
-            nextX = x - CalcEquation(x, 1) / CalcEquation(x, 2);
+            double firstDiff = CalcEquation(x, 1);
+            double secondDiff = CalcEquation(x, 2);
+            if(secondDiff == 0.0f) { // point of inflection
+                break;
+            }
+            nextX = x - firstDiff/secondDiff;
             errorX = abs((nextX-x)/nextX);
             x = nextX;
+        }
+        double secondDiff = CalcEquation(x, 2);
+        if(secondDiff == 0.0f) { // Point of inflection
+            continue;
+        } else if(secondDiff < 0) { // Maximum
+            continue;
         }
         cout << "min : " << x << ", f(min) : " << CalcEquation(x, 0) << endl;
         cout << "errorX : " << abs(errorX) << endl;
@@ -66,7 +77,11 @@ void UsingExactDerivatives(void)
             minX = x;
         }
     }
-    cout << "Guess min: " << minX << ", f(x) : " << minFX << endl;
+    if(minX == DBL_MAX) {
+        cout << "Can't find min" << endl;
+    } else {
+        cout << "Guess min: " << minX << ", f(x) : " << minFX << endl;
+    }
 }
 
 void UsingApproximation(void)
@@ -91,10 +106,19 @@ void UsingApproximation(void)
             double fx_1 = CalcEquation(x - interval, 0);
             double firstDiff = (fx1 - fx) / interval;
             double secondDiff = (fx1 - 2*fx + fx_1) / (interval * interval);
+            if(secondDiff == 0.0f) { // point of inflection
+                break;
+            }
 
             nextX = x - firstDiff/secondDiff;
             errorX = abs((nextX-x)/nextX);
             x = nextX;
+        }
+        double secondDiff = (CalcEquation(x+interval, 0) - 2*CalcEquation(x, 0) + CalcEquation(x-interval, 0)) / (interval * interval);
+        if(secondDiff == 0.0f) { // Point of inflection
+            continue;
+        } else if(secondDiff < 0) { // Maximum
+            continue;
         }
         cout << "min : " << x << ", f(min) : " << CalcEquation(x, 0) << endl;
         cout << "errorX : " << errorX << endl;
@@ -103,7 +127,11 @@ void UsingApproximation(void)
             minX = x;
         }
     }
-    cout << "Guess min: " << minX << ", f(x) : " << minFX << endl;
+    if(minX == DBL_MAX) {
+        cout << "Can't find min" << endl;
+    } else {
+        cout << "Guess min: " << minX << ", f(x) : " << minFX << endl;
+    }
 }
 
 double CalcEquation(double x, int diffCnt)
