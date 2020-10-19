@@ -1,0 +1,24 @@
+1. how to install
+https://docs.opencv.org/master/d7/d9f/tutorial_linux_install.html
+
+sudo apt install -y g++ camke make wget unzip
+sudo apt-get install libgtk2.0-dev
+
+wget -O opencv.zip https://github.com/opencv/opencv/archive/master.zip
+unzip opencv.zip
+mv opencv-master opencv
+
+mkdir -p build && cd build
+cmake ../opencv
+make -j4
+sudo make install
+
+OR!!! try this url
+https://webnautes.tistory.com/1433
+
+2. how to compile
+g++ -o test main.cpp -I/usr/local/include/opencv4 -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc -std=c++17
+
+or
+
+g++ -o test main.cpp `pkg-config opencv4 --libs --cflags` -std=c++17
