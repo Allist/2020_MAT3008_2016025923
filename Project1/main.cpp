@@ -5,11 +5,15 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem> // using directory listing
+#include <algorithm>
+#include <vector>
+//#include <utility>
 
 using namespace std;
 namespace fs = std::filesystem; // need -std=c++17
 
 string matAFilePath = "/home/ccma750/Documents/Face_dataset/matA.xml";
+string dataDirPath = "/home/ccma750/Documents/Face_dataset/";
 /*
 string matWFilePath = "/home/ccma750/Documents/Face_dataset/matW.xml";
 string matUFilePath = "/home/ccma750/Documents/Face_dataset/matU.xml";
@@ -19,11 +23,18 @@ string matVTFilePath = "/home/ccma750/Documents/Face_dataset/matVT.xml";
 cv::Mat matA;
 cv::PCA pca;
 cv::Mat inputData; //input Data
+int maxComponents = 1024;
+double priority[1024] = {0, };
+
+bool Lcompare(const pair<int, double>& a, const pair<int, double>& b)
+{
+	return a.second < b.second;
+}
 
 bool MakeDatasetByYale()
 {
     string yaleDirPath = "/home/ccma750/Documents/Face_dataset/CroppedYale/";
-    string imgSaveDirPath = "/home/ccma750/Documents/Face_dataset/TrainingDataSet/yale/";
+    string imgSaveDirPath = "/home/ccma750/Documents/Face_dataset/TrainingDataSet/1_yale/";
 
     for(const auto & entry : fs::directory_iterator(yaleDirPath)) {
         string imgFileName = entry.path().filename();
@@ -51,16 +62,22 @@ bool MakeDatasetByYale()
     return true;
 }
 
-bool MakeDatasetByCelebA()
+bool MakeDatasetByCelebA(int argCnt = 0)
 {
     string CelebADirPath = "/home/ccma750/Documents/Face_dataset/CelebA/img_align_celeba/";
-    string imgSaveDirPath = "/home/ccma750/Documents/Face_dataset/TrainingDataSet/CelebA/";
+    string imgSaveDirPath = "/home/ccma750/Documents/Face_dataset/TrainingDataSet/2_CelebA/";
 
     // open CelebA landmarks list txt
     ifstream landmarkListTxt("/home/ccma750/Documents/Face_dataset/CelebA/list_landmarks_align_celeba.txt", ifstream::in);
     string attribute;
     int minX, maxX, minY, maxY, width, height;
     int rect1, rect2, rect3, rect4;
+    int datasetCnt = 0;
+
+    if(argCnt < 0) {
+        cout << "argCnt must be equal or greater than 0" << endl;
+        return false;
+    }
 
     getline(landmarkListTxt, attribute); // 202599
     getline(landmarkListTxt, attribute); // lefteye_x(10~12) lefteye_y(13~17) righteye_x(18~22) righteye_y(23~27)
@@ -71,6 +88,17 @@ bool MakeDatasetByCelebA()
         string imgFilePath = entry.path();
         string imgFileName = entry.path().filename();
         string imgSavePath = imgSaveDirPath + imgFileName.substr(0, imgFileName.length()-4) + ".pgm";
+
+        if(argCnt == datasetCnt) {
+            cout << "datasetCnt : " << datasetCnt << " Finished!" << endl;
+            break;
+        }
+        datasetCnt++;
+
+        if(fs::exists(imgSavePath)) {
+            cout << "Skip : " << imgSavePath << endl;
+            continue;
+        }
 
         {// Find min/max of x/y
             getline(landmarkListTxt, attribute);
@@ -116,6 +144,7 @@ bool MakeDatasetByCelebA()
             cout << "Failed: " << imgSavePath << endl;
             return false;
         }
+
 
 
 
@@ -205,15 +234,26 @@ bool MakePredictSetByYale()
     return true;
 }
 
-bool MakeMatA()
+/*
+ * arg Cnt = 0 means read full count
+ */
+bool MakeMatA(int argCnt = 0)
 {
     string DatasetPath = "/home/ccma750/Documents/Face_dataset/TrainingDataSet/";
     int datasetCnt = 0;
     int datasetIdx = 0;
 
+    if(argCnt < 0) {
+        cout << "argCnt must be equal or greater than 0" << endl;
+        return false;
+    }
+
     for(const auto & entry : fs::recursive_directory_iterator(DatasetPath)) {
         if(entry.path().extension().generic_string().compare(".pgm") == 0) { // find pgm image.
             datasetCnt++;
+        }
+        if(argCnt == datasetCnt) {
+            break;
         }
     }
 
@@ -238,6 +278,9 @@ bool MakeMatA()
         //data_img.reshape(0, 1024).copyTo(matA(cv::Rect(datasetIdx, 0, 1, 1024)));
         data_img.reshape(0, 1024).convertTo(matA(cv::Rect(datasetIdx, 0, 1, 1024)), CV_64F);
         datasetIdx++;
+        if(datasetIdx == datasetCnt) {
+            break;
+        }
     }
 
     return true;
@@ -246,16 +289,26 @@ bool MakeMatA()
 void SaveMatA()
 {
     // Export MatA to File
-    cv::FileStorage matAFile(matAFilePath, cv::FileStorage::WRITE);
+    //cv::FileStorage matAFile(matAFilePath, cv::FileStorage::WRITE);
+    string filePath = dataDirPath + "matA" + to_string(matA.cols) + ".xml";
+    cv::FileStorage matAFile(filePath, cv::FileStorage::WRITE);
     matAFile << "matA" << matA;
     matAFile.release();
 }
 
-void LoadMatA()
+bool LoadMatA(int argCnt = 3000)
 {
-    cv::FileStorage matAFile(matAFilePath, cv::FileStorage::READ);
+    //cv::FileStorage matAFile(matAFilePath, cv::FileStorage::READ);
+    string filePath = dataDirPath + "matA" + to_string(argCnt) + ".xml";
+    cv::FileStorage matAFile(filePath, cv::FileStorage::READ);
+    if(!matAFile.isOpened()) {
+        cout << "Open MatA failed!" << endl;
+        return false;
+    }
     matAFile["matA"] >> matA;
     matAFile.release();
+
+    return true;
 }
 
 /*
@@ -293,19 +346,28 @@ void LoadMat_W_U_VT()
 
 void RunPCA()
 {
-    pca = cv::PCA(matA, cv::noArray(), cv::PCA::DATA_AS_COL, 0);
+    pca = cv::PCA(matA, cv::noArray(), cv::PCA::DATA_AS_COL, maxComponents);
 }
 
 void SavePCA()
 {
-    cv::FileStorage fs("/home/ccma750/Documents/Face_dataset/pca.xml", cv::FileStorage::WRITE);
+    //cv::FileStorage fs("/home/ccma750/Documents/Face_dataset/pca.xml", cv::FileStorage::WRITE);
+    string filePath = dataDirPath + "pca" + to_string(matA.cols) + ".xml";
+    cv::FileStorage fs(filePath, cv::FileStorage::WRITE);
     pca.write(fs);
 }
 
-void LoadPCA()
+bool LoadPCA(int argCnt = 3000)
 {
-    cv::FileStorage fs("/home/ccma750/Documents/Face_dataset/pca.xml", cv::FileStorage::READ);
+    //cv::FileStorage fs("/home/ccma750/Documents/Face_dataset/pca.xml", cv::FileStorage::READ);
+    string filePath = dataDirPath + "pca" + to_string(argCnt) + ".xml";
+    cv::FileStorage fs(filePath, cv::FileStorage::READ);
+    if(!fs.isOpened()) {
+        cout << "Open PCA failed!" << endl;
+        return false;
+    }
     pca.read(fs.root());
+    return true;
 }
 
 void PrintEigenFaces()
@@ -322,6 +384,10 @@ void PrintEigenFaces()
 
     for(int i = 0; i < height; ++i) {
         for(int j = 0; j < width; ++j) {
+            if(maxComponents <= i*width + j) {
+                i = height;
+                break;
+            }
             eigenvector = eigenvectors(cv::Rect(0, i*width+j, 1024, 1));
             cv::normalize(eigenvector, eigenface, 0, 255, cv::NORM_MINMAX, CV_8UC1);
             eigenface = eigenface.reshape(0, 32);
@@ -366,8 +432,13 @@ bool LoadInputData()
 
 void Predict()
 {
-    cv::Mat coefficients = pca.project(inputData.t()); // [50 * 1024]
-    cout << coefficients.size() << endl;
+    int matchedCnt = 0;
+    cv::Mat coefficients = pca.project(inputData.t()); // [50 * maxComponents(1024)]
+    //cout << coefficients.size() << endl;
+    cv::Mat pri = cv::Mat(maxComponents, 1, CV_64FC1, priority);
+
+    cout << coefficients.col(1).size() << endl;
+    cout << pri.size() << endl;
 
     for(int i = 0; i < 50; ++i)
     {
@@ -379,22 +450,77 @@ void Predict()
         int preFace = -1; // -1 is error.
         for(int j = 0; j < 10; ++j) // 10 people
         {
-            double dist = cv::norm(coefficients.col(i), coefficients.col(j*5), cv::NORM_L2);
+            /*
+            double dist = cv::norm(coefficients.col(i).mul(pca.eigenvalues), 
+                                   coefficients.col(j*5).mul(pca.eigenvalues), cv::NORM_L2);
+            */
+            //double dist = cv::norm(coefficients.col(i)/pca.eigenvalues, coefficients.col(j*5)/pca.eigenvalues, cv::NORM_L2);
+            //double dist = cv::norm(coefficients.col(i), coefficients.col(j*5), cv::NORM_L2);
+            double dist = cv::norm(coefficients.col(i).mul(pri), 
+                                   coefficients.col(j*5).mul(pri), cv::NORM_L2);
             if(dist < minDist) {
                 preFace = j;
                 minDist = dist;
             }
         }
+        /*
         cout << "i : " << i << "pre : " << preFace << endl;
+        */
+        if(i/5 == preFace) {
+            matchedCnt++;
+        }
     }
+
+    cout << "predict Rate: " << (double)matchedCnt / 40 << endl;
+}
+
+void PriOfEigenvectors()
+{
+    vector<pair<int, double>> stdDev;
+    // Calc mean of variance of same human's coefficients and ordering Eigenvectors.
+    cv::Mat coefficients = pca.project(inputData.t()); // [maxComponents(1024) * 50]
+    cv::Mat tmpVar;
+
+    for(int j = 0; j < 50; j += 5)
+    {
+        stdDev.clear();
+        for(int i = 0; i < maxComponents; ++i)
+        {
+            cv::meanStdDev(coefficients(cv::Rect(j, i, 5, 1)).t(), cv::noArray(), tmpVar);
+            stdDev.push_back(pair(i, tmpVar.at<double>(0)));
+        }
+        sort(stdDev.begin(), stdDev.end(), Lcompare); // Ascending order
+
+        // Debug print
+        /*
+        for(int i = 0; i < maxComponents; ++i)
+        {
+            cout << stdDev[i].first << " : " << stdDev[i].second << endl;
+        }
+        */
+        for(int i = 0; i < maxComponents; ++i)
+        {
+            priority[stdDev[i].first] += (double)(maxComponents-i);
+        }
+    }
+    for(int i = 0; i < maxComponents; ++i)
+    {
+        cout << "i : " << priority[i] << endl;
+    }
+
+    //cv::meanStdDev(coefficients.rowRange(0, 5), cv::noArray(), tmpVar);
 }
 
 int main()
 {
-    LoadMatA();
-    LoadPCA();
+    //maxComponents = 50;
+    LoadMatA(10000);
+    LoadPCA(10000);
+    //RunPCA();
     LoadInputData();
+    PriOfEigenvectors();
     Predict();
+
 
     return 0;
 }
