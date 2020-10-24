@@ -22,9 +22,11 @@ string matVTFilePath = "/home/ccma750/Documents/Face_dataset/matVT.xml";
 //cv::Mat matA, matU, matW, matVT;
 cv::Mat matA;
 cv::PCA pca;
-cv::Mat inputData; //input Data
+cv::Mat pri; // weight
 int maxComponents = 1024;
 double priority[1024] = {0, };
+bool isWeight = false;
+int trCnt = 10000;//Training Count
 
 bool Lcompare(const pair<int, double>& a, const pair<int, double>& b)
 {
@@ -190,20 +192,20 @@ bool MakeDatasetByCelebA(int argCnt = 0)
 
 bool MakePredictSetByYale()
 {
-    string yaleDirPath = "/home/ccma750/Documents/Face_dataset/CroppedYale/";
-    string imgSaveDirPath = "/home/ccma750/Documents/Face_dataset/PredictDataSet/";
+    string yaleDirPath = "/home/ccma750/Documents/Face_dataset/CroppedByMe/";
+    string imgSaveDirPath = "/home/ccma750/Documents/Face_dataset/PDS2/";
 
     vector<string> attributes;
     attributes.push_back("_P00A+000E+00.pgm");
-    attributes.push_back("_P00A+025E+00.pgm");
-    attributes.push_back("_P00A-025E+00.pgm");
-    attributes.push_back("_P00A+000E-20.pgm");
-    attributes.push_back("_P00A+000E-35.pgm");
+    attributes.push_back("_P02A+000E+00.pgm");
+    attributes.push_back("_P07A+000E+00.pgm");
+    attributes.push_back("_P00A+050E+00.pgm");
+    attributes.push_back("_P00A-050E+00.pgm");
 
-    for(int i = 20; i < 30; ++i) { // 10 people
+    for(int i = 30; i < 40; ++i) { // 10 people
         for(vector<string>::iterator it = attributes.begin(); it != attributes.end(); ++it)
         {
-            string imgFilePath = yaleDirPath + "yaleB" + to_string(i) + "/yaleB" + to_string(i) + *it;
+            string imgFilePath = yaleDirPath + "yaleB" + to_string(i) + *it;
             
             // Open image and resize 32x32 and save it.
             cv::Mat origin_img = cv::imread(imgFilePath, cv::IMREAD_GRAYSCALE);
@@ -352,7 +354,7 @@ void RunPCA()
 void SavePCA()
 {
     //cv::FileStorage fs("/home/ccma750/Documents/Face_dataset/pca.xml", cv::FileStorage::WRITE);
-    string filePath = dataDirPath + "pca" + to_string(matA.cols) + ".xml";
+    string filePath = dataDirPath + "pca_" + to_string(matA.cols) + "_maxComponents_" + to_string(maxComponents) + ".xml";
     cv::FileStorage fs(filePath, cv::FileStorage::WRITE);
     pca.write(fs);
 }
@@ -360,7 +362,7 @@ void SavePCA()
 bool LoadPCA(int argCnt = 3000)
 {
     //cv::FileStorage fs("/home/ccma750/Documents/Face_dataset/pca.xml", cv::FileStorage::READ);
-    string filePath = dataDirPath + "pca" + to_string(argCnt) + ".xml";
+    string filePath = dataDirPath + "pca_" + to_string(argCnt) + "_maxComponents_" + to_string(maxComponents) + ".xml";
     cv::FileStorage fs(filePath, cv::FileStorage::READ);
     if(!fs.isOpened()) {
         cout << "Open PCA failed!" << endl;
@@ -400,18 +402,39 @@ void PrintEigenFaces()
     cv::waitKey(0);
 }
 
-bool LoadInputData()
+bool LoadInputData(cv::Mat &inputData, bool isPrdInA)
 {
-    string inputImgDirPath = "/home/ccma750/Documents/Face_dataset/PredictDataSet/";
+    inputData.release();
+    inputData = cv::Mat();
+    string inputImgDirPath;
+    int begin, end;
+    if(isPrdInA) {
+        inputImgDirPath = "/home/ccma750/Documents/Face_dataset/PDS1/";
+        begin = 20, end = 30;
+        //cout << "InputData is in matrix A" << endl;
+    } else {
+        inputImgDirPath = "/home/ccma750/Documents/Face_dataset/PDS2/";
+        begin = 30, end = 40;
+        //cout << "InputData is NOT! in matrix A" << endl;
+    }
 
     vector<string> attributes;
+    //Harder
     attributes.push_back("_P00A+000E+00.pgm");
-    attributes.push_back("_P00A+025E+00.pgm");
-    attributes.push_back("_P00A-025E+00.pgm");
+    attributes.push_back("_P02A+000E+00.pgm");
+    attributes.push_back("_P07A+000E+00.pgm");
+    attributes.push_back("_P00A+050E+00.pgm");
+    attributes.push_back("_P00A-050E+00.pgm");
+    //Easier
+    /*
+    attributes.push_back("_P00A+000E+00.pgm");
     attributes.push_back("_P00A+000E-20.pgm");
     attributes.push_back("_P00A+000E-35.pgm");
+    attributes.push_back("_P00A+025E+00.pgm");
+    attributes.push_back("_P00A-025E+00.pgm");
+    */
 
-    for(int i = 20; i < 30; ++i) { // 10 people
+    for(int i = begin; i < end; ++i) { // 10 people
         for(vector<string>::iterator it = attributes.begin(); it != attributes.end(); ++it)
         {
             string imgFilePath = inputImgDirPath + "yaleB" + to_string(i) + *it;
@@ -420,6 +443,8 @@ bool LoadInputData()
             cv::Mat input_img = cv::imread(imgFilePath, cv::IMREAD_GRAYSCALE);
             if(input_img.data == NULL) {
                 cout << "Error opening image : " << imgFilePath << endl;
+                inputData.release();
+                inputData = cv::Mat();
                 return false;
             }
 
@@ -430,16 +455,47 @@ bool LoadInputData()
     return true;
 }
 
-void Predict()
+void PrintReImgs(bool isPrdInA)
+{
+    cv::Mat eigenvectors = pca.eigenvectors;
+    cv::Mat reVectors;
+    cv::Mat reImg;
+    cv::Mat PrintMat = cv::Mat(cv::Size(32*10, 32*10), CV_8UC1);
+    cv::Mat coefficients; // [50 * maxComponents(1024)]
+    cv::Mat inputData;
+    int width = 10;
+    int height = 5;
+
+    LoadInputData(inputData, isPrdInA);
+    coefficients = pca.project(inputData.t()); // [50 * maxComponents(1024)]
+
+    reVectors = pca.backProject(coefficients);
+    cout << reVectors.size() << endl;
+
+    for(int i = 0; i < height; ++i) {
+        for(int j = 0; j < width; ++j) {
+            cout << i << ", " << j << endl;
+            cv::normalize(reVectors.col(i*width + j), reImg, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+            reImg = reImg.reshape(0, 32);
+            reImg.copyTo(PrintMat(cv::Rect(32*j, 32*i, 32, 32)));
+        }
+    }
+
+    cv::namedWindow("image2", cv::WINDOW_AUTOSIZE);
+    cv::imshow("image2", PrintMat);
+    cv::waitKey(0);
+}
+
+void Predict(bool isPrdInA)
 {
     int matchedCnt = 0;
-    cv::Mat coefficients = pca.project(inputData.t()); // [50 * maxComponents(1024)]
-    //cout << coefficients.size() << endl;
-    cv::Mat pri = cv::Mat(maxComponents, 1, CV_64FC1, priority);
+    double dist;
+    cv::Mat coefficients;
+    cv::Mat inputData;
 
-    cout << coefficients.col(1).size() << endl;
-    cout << pri.size() << endl;
-
+    LoadInputData(inputData, isPrdInA);
+    coefficients = pca.project(inputData.t()); // [50 * maxComponents(1024)]
+    
     for(int i = 0; i < 50; ++i)
     {
         if(i%5 == 0) // skip representative image
@@ -456,8 +512,12 @@ void Predict()
             */
             //double dist = cv::norm(coefficients.col(i)/pca.eigenvalues, coefficients.col(j*5)/pca.eigenvalues, cv::NORM_L2);
             //double dist = cv::norm(coefficients.col(i), coefficients.col(j*5), cv::NORM_L2);
-            double dist = cv::norm(coefficients.col(i).mul(pri), 
+            if(isWeight) {
+            dist = cv::norm(coefficients.col(i).mul(pri), 
                                    coefficients.col(j*5).mul(pri), cv::NORM_L2);
+            } else {
+                dist = cv::norm(coefficients.col(i), coefficients.col(j*5), cv::NORM_L2);
+            }
             if(dist < minDist) {
                 preFace = j;
                 minDist = dist;
@@ -474,12 +534,20 @@ void Predict()
     cout << "predict Rate: " << (double)matchedCnt / 40 << endl;
 }
 
-void PriOfEigenvectors()
+bool PriOfEigenvectors(bool isFirstSet)
 {
     vector<pair<int, double>> stdDev;
     // Calc mean of variance of same human's coefficients and ordering Eigenvectors.
-    cv::Mat coefficients = pca.project(inputData.t()); // [maxComponents(1024) * 50]
+    cv::Mat coefficients; // [maxComponents(1024) * 50]
     cv::Mat tmpVar;
+    cv::Mat inputData;
+
+    if(!LoadInputData(inputData, isFirstSet)) {
+        cout << "ERROR!" << endl;
+        return false;
+    }
+
+    coefficients = pca.project(inputData.t()); // [maxComponents(1024) * 50]
 
     for(int j = 0; j < 50; j += 5)
     {
@@ -503,24 +571,177 @@ void PriOfEigenvectors()
             priority[stdDev[i].first] += (double)(maxComponents-i);
         }
     }
+    /*
     for(int i = 0; i < maxComponents; ++i)
     {
         cout << "i : " << priority[i] << endl;
     }
+    */
+
+    pri = cv::Mat(maxComponents, 1, CV_64FC1, priority);
+
+    // Export weights to File
+    string filePath;
+    if(isFirstSet) {
+        filePath = dataDirPath + "PA" + to_string(trCnt) + "C" + to_string(maxComponents) + "F1" + ".xml";
+    } else {
+        filePath = dataDirPath + "PA" + to_string(trCnt) + "C" + to_string(maxComponents) + "F2" + ".xml";
+    }
+    cv::FileStorage matAFile(filePath, cv::FileStorage::WRITE);
+    matAFile << "pri" << pri;
+    matAFile.release();
 
     //cv::meanStdDev(coefficients.rowRange(0, 5), cv::noArray(), tmpVar);
+    return true;
 }
+
+bool LoadPri(bool isFirstSet)
+{
+    // Import weights to File
+    string filePath;
+    if(isFirstSet) {
+        filePath = dataDirPath + "PA" + to_string(trCnt) + "C" + to_string(maxComponents) + "F1" + ".xml";
+    } else {
+        filePath = dataDirPath + "PA" + to_string(trCnt) + "C" + to_string(maxComponents) + "F2" + ".xml";
+    }
+    cv::FileStorage matAFile(filePath, cv::FileStorage::READ);
+    if(!matAFile.isOpened()) {
+        cout << "Open Pri failed!" << endl;
+        return false;
+    }
+    matAFile["pri"] >> pri;
+    matAFile.release();
+
+    return true;
+}
+
+void PrintPredictImgs()
+{
+    cv::Mat inputData1, inputData2;
+    cv::Mat PrintMat = cv::Mat(cv::Size(32*10, 32*10), CV_8UC1);
+    cv::Mat imgMat;
+    int width = 10;
+    int height = 10;
+
+    LoadInputData(inputData1, true);
+    LoadInputData(inputData2, false);
+
+    for(int i = 0; i < 5; ++i) {
+        for(int j = 0; j < width; ++j) {
+            cv::normalize(inputData1(cv::Rect(0, i*width+j, 1024, 1)), imgMat, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+            imgMat = imgMat.reshape(0, 32);
+            imgMat.copyTo(PrintMat(cv::Rect(32*j, 32*i, 32, 32)));
+        }
+    }
+    for(int i = 0; i < 5; ++i) {
+        for(int j = 0; j < width; ++j) {
+            cv::normalize(inputData2(cv::Rect(0, i*width+j, 1024, 1)), imgMat, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+            imgMat = imgMat.reshape(0, 32);
+            imgMat.copyTo(PrintMat(cv::Rect(32*j, 32*(i+5), 32, 32)));
+        }
+    }
+
+    cv::imwrite("/home/ccma750/Documents/Face_dataset/HardTestSet.jpeg", PrintMat);
+
+    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
+    cv::imshow("image", PrintMat);
+    cv::waitKey(0);
+}
+
+/** FAILED!
+bool DrawPlotCoefficients(bool isFirstSet)
+{
+    cv::Mat stdDevs;
+    cv::Mat stdDev;
+    // Calc mean of variance of same human's coefficients and ordering Eigenvectors.
+    cv::Mat coefficients; // [maxComponents(1024) * 50]
+    cv::Mat tmpVar;
+    cv::Mat inputData;
+    cv::Mat hist;
+    float maxVal = FLT_MAX;
+    float range[] = {0, 0};
+    const float* histRange = {range};
+    int histSize = maxComponents;
+    cv::Mat histImg(1024, 500, CV_8UC1, cv::Scalar(0, 0, 0));
+
+    if(!LoadInputData(inputData, isFirstSet)) {
+        cout << "ERROR!" << endl;
+        return false;
+    }
+
+    coefficients = pca.project(inputData.t()); // [maxComponents(1024) * 50]
+
+    for(int j = 0; j < 50; j += 5)
+    {
+        stdDev.release();
+        stdDev = cv::Mat();
+        for(int i = 0; i < maxComponents; ++i)
+        {
+            cv::meanStdDev(coefficients(cv::Rect(j, i, 5, 1)).t(), cv::noArray(), tmpVar);
+            if(maxVal < tmpVar.at<float>(0)) {
+                maxVal = tmpVar.at<float>(0);
+            }
+            stdDev.push_back(tmpVar);
+        }
+        stdDevs.push_back(stdDev);
+    }
+    range[1] = maxVal;
+
+    cv::calcHist(&stdDevs, 10, 0, cv::Mat(), hist, 1, &histSize, &histRange);
+
+    return true;
+}
+*/
 
 int main()
 {
-    //maxComponents = 50;
-    LoadMatA(10000);
-    LoadPCA(10000);
-    //RunPCA();
-    LoadInputData();
-    PriOfEigenvectors();
-    Predict();
+    int tmp;
+    bool isPrdInA = false;
+    bool isFirstSet = false; // weights are extracted from 1st set?
+    isWeight = false;
+    maxComponents = 1024;
 
+    cout << "How many training Cnt? (3000/10000) : ";
+    cin >> trCnt;
+    cout << "How many eigenvector used? (100/1024): ";
+    cin >> maxComponents;
+    cout << "Is predict data in training set? (1/0): ";
+    cin >> tmp;
+    if(tmp == 1) {
+        isPrdInA = true; // Using 1st set.
+    }
+    cout << "When calc meanStdDev, using weight? (1/0) : ";
+    cin >> tmp;
+    if(tmp == 1) {
+        isWeight = true;
+        cout << "When calc weights, weights are extracted from which set? (1/2): ";
+            cin >> tmp;
+            if(tmp == 1) { // Using 1st set
+                isFirstSet = true;
+            }
+    }
+
+    if(!LoadMatA(10000)) {
+        MakeMatA(10000);
+        SaveMatA();
+    }
+    if(trCnt != 10000) {
+        matA = matA(cv::Rect(0, 0, trCnt, 1024));
+    }
+    if(!LoadPCA(trCnt)) {
+        RunPCA();
+        SavePCA();
+    }
+    cout << pca.eigenvectors.size() << endl;
+    if(isWeight) {
+        if(!LoadPri(isFirstSet)) {
+            if(!PriOfEigenvectors(isFirstSet)) {
+                cout << "Make priority of eigenvectors failed!" << endl;
+            }
+        }
+    }
+    Predict(isPrdInA);
+    PrintPredictImgs();
 
     return 0;
 }
