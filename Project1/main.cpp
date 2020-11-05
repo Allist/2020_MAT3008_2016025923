@@ -420,19 +420,19 @@ bool LoadInputData(cv::Mat &inputData, bool isPrdInA)
 
     vector<string> attributes;
     //Harder
+    /*
     attributes.push_back("_P00A+000E+00.pgm");
     attributes.push_back("_P02A+000E+00.pgm");
     attributes.push_back("_P07A+000E+00.pgm");
     attributes.push_back("_P00A+050E+00.pgm");
     attributes.push_back("_P00A-050E+00.pgm");
+    */
     //Easier
-    /*
     attributes.push_back("_P00A+000E+00.pgm");
     attributes.push_back("_P00A+000E-20.pgm");
     attributes.push_back("_P00A+000E-35.pgm");
     attributes.push_back("_P00A+025E+00.pgm");
     attributes.push_back("_P00A-025E+00.pgm");
-    */
 
     for(int i = begin; i < end; ++i) { // 10 people
         for(vector<string>::iterator it = attributes.begin(); it != attributes.end(); ++it)
@@ -648,6 +648,86 @@ void PrintPredictImgs()
     cv::waitKey(0);
 }
 
+void PrintReconstructedImgs()
+{
+    cv::Mat inputData1, inputData2;
+    cv::Mat PrintMat = cv::Mat(cv::Size(32*10, 32*10), CV_8UC1);
+    cv::Mat imgMat;
+    int width = 10;
+    int height = 10;
+
+    LoadInputData(inputData1, true);
+    inputData1 = pca.project(inputData1.t());
+    inputData1 = pca.backProject(inputData1);
+    LoadInputData(inputData2, false);
+    inputData2 = pca.project(inputData2.t());
+    inputData2 = pca.backProject(inputData2);
+    cout << inputData1.size() << endl;
+
+    for(int i = 0; i < 5; ++i) {
+        for(int j = 0; j < width; ++j) {
+            cv::normalize(inputData1(cv::Rect(i*width+j, 0, 1, 1024)), imgMat, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+            imgMat = imgMat.reshape(0, 32);
+            imgMat.copyTo(PrintMat(cv::Rect(32*j, 32*i, 32, 32)));
+        }
+    }
+    for(int i = 0; i < 5; ++i) {
+        for(int j = 0; j < width; ++j) {
+            cv::normalize(inputData2(cv::Rect(i*width+j, 0, 1, 1024)), imgMat, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+            imgMat = imgMat.reshape(0, 32);
+            imgMat.copyTo(PrintMat(cv::Rect(32*j, 32*(i+5), 32, 32)));
+        }
+    }
+
+    cv::imwrite("/home/ccma750/Documents/Face_dataset/ReconstructHardTestSet.jpeg", PrintMat);
+
+    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
+    cv::imshow("image", PrintMat);
+    cv::waitKey(0);
+}
+
+bool SaveMSTDs()
+{
+    // Calc mean of variance of same human's coefficients and ordering Eigenvectors.
+    cv::Mat coefficients; // [maxComponents(1024) * 50]
+    cv::Mat tmpVar;
+    cv::Mat weight;
+    cv::Mat MSTDs;
+    cv::Mat inputData;
+    bool isFirstSet = false;
+
+    if(!LoadInputData(inputData, isFirstSet)) {
+        cout << "ERROR!" << endl;
+        return false;
+    }
+
+    coefficients = pca.project(inputData.t()); // [maxComponents(1024) * 50]
+
+    for(int j = 0; j < 50; j += 5)
+    {
+        weight.release();
+        weight = cv::Mat();
+        for(int i = 0; i < maxComponents; ++i)
+        {
+            cv::meanStdDev(coefficients(cv::Rect(j, i, 5, 1)).t(), cv::noArray(), tmpVar);
+            weight.push_back(tmpVar);
+        }
+        MSTDs.push_back(weight.t());
+    }
+    
+    string filePath;
+    if(isFirstSet) {
+        filePath = dataDirPath + "MSTDs" + to_string(trCnt) + "C" + to_string(maxComponents) + "F1" + ".csv";
+    } else {
+        filePath = dataDirPath + "MSTDs" + to_string(trCnt) + "C" + to_string(maxComponents) + "F2" + ".csv";
+    }
+    ofstream fs;
+    fs.open(filePath);
+    fs << cv::format(MSTDs, cv::Formatter::FMT_CSV) << endl;
+    fs.close();
+    return true;
+}
+
 /** FAILED!
 bool DrawPlotCoefficients(bool isFirstSet)
 {
@@ -741,7 +821,6 @@ int main()
         }
     }
     Predict(isPrdInA);
-    PrintPredictImgs();
 
     return 0;
 }
