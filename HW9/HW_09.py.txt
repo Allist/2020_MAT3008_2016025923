@@ -1,0 +1,104 @@
+'''
+Numerical Analysis HW #9
+DCT/IDCT
+2016025150 Yeonguk Go
+'''
+
+'''
+HW #9
+DCT/IDCT
+* Use 2D DCT for 16x16 image block
+  - Total 256 bases
+* Select 16 highest coefficients for each block
+  - The other 240 coefficients are set to zero
+* Inverse DCT with the selected coefficients and their corresponding 2D DCT bases
+  - Image synthesis with 16 bases of highest coefficients
+'''
+
+import cv2
+import numpy as np
+
+N = 16 # block size
+alpha = np.full(N, np.sqrt(2/N))
+alpha[0] = np.sqrt(1/N)
+
+def DCT(img):
+    log_cnt = 0
+
+    width_size = img.shape[1]
+    height_size = img.shape[0]
+
+    if (width_size % N != 0) or (height_size % N != 0):
+        print("The width or height size of image must be the multiple of 16.")
+        return None
+
+    w_blk_num = int(width_size / N)
+    h_blk_num = int(height_size / N)
+
+    coeff = np.zeros((h_blk_num, w_blk_num, N, N, 3))
+    for h in range(h_blk_num): # each row blocks in image
+        for w in range(w_blk_num): # each blocks in row block
+            coeff_blk = np.zeros((N, N, 3))
+            for v in range(N):
+                for u in range(N):
+                    for y in range(N):
+                        for x in range(N):
+                            coeff_blk[v][u] += img[(h*N)+y][(w*N)+x] * np.cos((np.pi*(2*x+1)*u)/(2*N)) * np.cos((np.pi*(2*y+1)*v)/(2*N))
+                    coeff_blk[v][u] *= alpha[u] * alpha[v]
+            coeff_blk = cv2.split(coeff_blk)
+            for each_color in coeff_blk:
+                sorted_color = np.dstack(np.unravel_index(np.flip(np.argsort(np.abs(each_color).ravel())), (N, N)))[0]
+                cnt = 0
+                for i in range(N*N):
+                    cnt += 1
+                    if cnt > 16:
+                        index = sorted_color[i]
+                        each_color[index[0]][index[1]] = 0
+            coeff_blk = cv2.merge(coeff_blk)
+            coeff[h][w] = coeff_blk
+            print("log", log_cnt)
+            log_cnt += 1
+    print(coeff)
+    return coeff
+
+def IDCT(coeff):
+    log_cnt = 0
+    w_blk_num = coeff.shape[1]
+    h_blk_num = coeff.shape[0]
+    width_size = w_blk_num * N
+    height_size = h_blk_num * N
+    img = np.zeros((height_size, width_size, 3))
+    for h in range(h_blk_num):
+        for w in range(w_blk_num):
+            img_blk = np.zeros((N, N, 3))
+            for y in range(N):
+                for x in range(N):
+                    for v in range(N):
+                        for u in range(N):
+                            img_blk[y][x] += alpha[u] * alpha[v] * coeff[h][w][v][u] * np.cos((np.pi*(2*x+1)*u)/(2*N)) * np.cos((np.pi*(2*y+1)*v)/(2*N))
+            img[h*N:(h+1)*N, w*N:(w+1)*N] = img_blk
+            print("log", log_cnt)
+            log_cnt += 1
+
+    min_val = np.min(img)
+    max_val = np.max(img)
+    if min_val < 0: min_val = 0
+    if max_val > 255: max_val = 255
+    cv2.normalize(img, img, min_val, max_val, cv2.NORM_MINMAX)
+
+    img = img.astype(np.uint8)
+
+    #print(result_img)
+    #print(result_img.shape)
+    return img
+
+def main():
+    origin_img = cv2.imread('4.jpeg', cv2.IMREAD_COLOR)
+
+    coeff = DCT(origin_img)
+    result_img = IDCT(coeff)
+
+    cv2.imwrite('result.bmp', result_img)
+
+if __name__ == "__main__":
+    main()
