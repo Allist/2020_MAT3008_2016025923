@@ -51,10 +51,10 @@ int main(void)
         cv::meanStdDev(rgb_img, mean, stddev); // bgr format
         cv::split(rgb_img, mul_ch);
         for(int i = 0; i < 3; ++i) {
-            double mean1 = mean.at<cv::Vec3f>(0)[i/2]; // 0, 0, 1
-            double mean2 = mean.at<cv::Vec3f>(0)[(i+3)/2]; // 1, 2, 2
-            double stddev1 = stddev.at<cv::Vec3f>(0)[i/2];
-            double stddev2 = stddev.at<cv::Vec3f>(0)[(i+3)/2];
+            double mean1 = mean.at<cv::Vec3d>(0)[i/2]; // 0, 0, 1
+            double mean2 = mean.at<cv::Vec3d>(0)[(i+3)/2]; // 1, 2, 2
+            double stddev1 = stddev.at<cv::Vec3d>(0)[i/2];
+            double stddev2 = stddev.at<cv::Vec3d>(0)[(i+3)/2];
             double cov = (mul_ch[i/2]-mean1).dot(mul_ch[(i+3)/2]-mean2) / pixels;
             correlation[idx][i] = cov / (stddev1 * stddev2);
         }
@@ -64,10 +64,10 @@ int main(void)
         cv::meanStdDev(yuv_img, mean, stddev);
         cv::split(yuv_img, mul_ch);
         for(int i = 0; i < 3; ++i) {
-            double mean1 = mean.at<cv::Vec3f>(0)[i/2]; // 0, 0, 1
-            double mean2 = mean.at<cv::Vec3f>(0)[(i+3)/2]; // 1, 2, 2
-            double stddev1 = stddev.at<cv::Vec3f>(0)[i/2];
-            double stddev2 = stddev.at<cv::Vec3f>(0)[(i+3)/2];
+            double mean1 = mean.at<cv::Vec3d>(0)[i/2]; // 0, 0, 1
+            double mean2 = mean.at<cv::Vec3d>(0)[(i+3)/2]; // 1, 2, 2
+            double stddev1 = stddev.at<cv::Vec3d>(0)[i/2];
+            double stddev2 = stddev.at<cv::Vec3d>(0)[(i+3)/2];
             double cov = (mul_ch[i/2]-mean1).dot(mul_ch[(i+3)/2]-mean2) / pixels;
             correlation[idx][i+3] = cov / (stddev1 * stddev2);
         }
