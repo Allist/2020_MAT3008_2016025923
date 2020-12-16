@@ -12,8 +12,8 @@ import cv2
 g_dim = 3
 g_train_cnt_per_cluster = 300
 g_pred_cnt_per_cluster = 100
-g_cluster_cnt = 5
-g_out_cluster_cnt = 1
+g_cluster_cnt = 12
+g_out_cluster_cnt = 3
 g_plot_fig_name = 0
 
 def create_points(means, stddevs, sample_cnt):
@@ -28,21 +28,27 @@ def draw_points(points_cluster_group, mean = None, box_points = None, radius = N
     global g_plot_fig_name
     g_plot_fig_name = g_plot_fig_name + 1
     # black color means out of cluster
-    colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#000000', '#00ffff']
-    '''
+    #colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#000000', '#00ffff']
+    
     colors = ['#ff0000','#00ff00','#0000ff',
                 '#ffff00','#00ffff','#ff00ff',
                 '#ff7f00','#7fff00','#00ff7f',
                 '#007fff','#7f00ff','#ff007f','#000000']
-    '''
+    
     fig = plt.figure(figsize=(12,8))
     ax = Axes3D(fig)
     #ax = fig.add_subplot(111, projection='3d')
-    for i in range(0, g_cluster_cnt+1):
+    for i in range(0, g_cluster_cnt):
         ax.scatter(points_cluster_group[i][:, 0], 
                     points_cluster_group[i][:, 1], 
                     points_cluster_group[i][:, 2], 
                     c=colors[i])
+    if(g_cluster_cnt < len(points_cluster_group)):
+        ax.scatter(points_cluster_group[g_cluster_cnt][:, 0], 
+                    points_cluster_group[g_cluster_cnt][:, 1], 
+                    points_cluster_group[g_cluster_cnt][:, 2], 
+                    c=colors[-1])
+        
 
     # draw mean points
     if(type(mean) != type(None)):
@@ -84,8 +90,8 @@ def draw_points(points_cluster_group, mean = None, box_points = None, radius = N
 # intervals: g_cluster_cnt * g_dim * 2
 # return: g_cluster_cnt * 6 * 4 * 3
 def make_interval_box_points(intervals):
-    ret = np.empty(shape=(g_cluster_cnt, 6, 4, 3))
-    for i in range(0, g_cluster_cnt):
+    ret = np.empty(shape=(intervals.shape[0], 6, 4, 3))
+    for i in range(0, intervals.shape[0]):
         Z = np.array(np.meshgrid(intervals[i][0], intervals[i][1], intervals[i][2])).T.reshape(-1,3)
         ret[i] = [[Z[0],Z[1],Z[3],Z[2]], #XY
                 [Z[4],Z[5],Z[7],Z[6]], #XY
@@ -120,8 +126,8 @@ def doTermProject():
                         [3,3,3], 
                         ])
     '''
-    means = np.random.randint(-15, 16, (5,3))
-    stddevs = np.random.randint(1, 6, (5,3))
+    means = np.random.randint(-30, 31, (g_cluster_cnt,g_dim))
+    stddevs = np.random.randint(1, 6, (g_cluster_cnt,g_dim))
 
     # Make training samples
     train_samples = np.zeros(shape=(g_cluster_cnt*g_train_cnt_per_cluster, g_dim))
@@ -133,7 +139,7 @@ def doTermProject():
     train_sample_groups = [None]*(g_cluster_cnt+1)
     for i in range(0, g_cluster_cnt):
         train_sample_groups[i] = train_samples[g_train_cnt_per_cluster*i:g_train_cnt_per_cluster*(i+1), :]
-    train_sample_groups[5] = np.zeros(shape=(0,g_dim))
+    train_sample_groups[g_cluster_cnt] = np.zeros(shape=(0,g_dim))
     # Draw plot that cluster group of sample points
     draw_points(train_sample_groups, means)
 
@@ -160,9 +166,9 @@ def doTermProject():
     means = np.vstack((means, np.array([-5, 5, 2])))
     stddevs = np.vstack((stddevs, np.array([4,1,2])))
     '''
-    means = np.vstack((means, np.random.randint(-15, 16, (1,3))))
-    stddevs = np.vstack((stddevs, np.random.randint(1, 6, (1,3))))
-    pred_samples = np.zeros(shape=((g_cluster_cnt+1)*g_pred_cnt_per_cluster, g_dim)) # add 1 cluster
+    means = np.vstack((means, np.random.randint(-30, 31, (g_out_cluster_cnt,g_dim))))
+    stddevs = np.vstack((stddevs, np.random.randint(1, 6, (g_out_cluster_cnt,g_dim))))
+    pred_samples = np.zeros(shape=((g_cluster_cnt+g_out_cluster_cnt)*g_pred_cnt_per_cluster, g_dim)) # add 1 cluster
     for col_idx in range(0, means.shape[0]):
         pred_samples[col_idx*g_pred_cnt_per_cluster:(col_idx+1)*g_pred_cnt_per_cluster, :] = \
             create_points(means[col_idx], stddevs[col_idx], g_pred_cnt_per_cluster)
@@ -173,8 +179,8 @@ def doTermProject():
     pca_labels = copy.deepcopy(labels)
 
     # Print Matching table
-    matching_tbl = np.full(6, -1,dtype=int)
-    matching_tbl[5] = 5
+    matching_tbl = np.full(g_cluster_cnt+1, -1,dtype=int)
+    matching_tbl[g_cluster_cnt] = g_cluster_cnt
     # matching_tbl = np.empty(shape=(5)).fill(-1)
     for i in range(0, g_cluster_cnt):
         optimal_dist = sys.float_info.max
@@ -199,7 +205,7 @@ def doTermProject():
     for i in range(0, len(labels)):
         if(matching_tbl[labels[i]] == int(i/100)):
             matching_cnt = matching_cnt + 1
-    print('Only using K-means clustering, predict rate: ', matching_cnt/(g_cluster_cnt+1)/g_pred_cnt_per_cluster)
+    print('Only using K-means clustering, predict rate: ', matching_cnt/(g_cluster_cnt+g_out_cluster_cnt)/g_pred_cnt_per_cluster)
 
     # Make cluster group of predict sample points using labels
     pred_sample_groups = [np.zeros(shape=(0, g_dim))]*(g_cluster_cnt+1)
@@ -222,7 +228,7 @@ def doTermProject():
                 max_dist = dist
         r_distance[i] = (min_dist + max_dist) / 4
     r_pred_sample_groups = [np.zeros(shape=(0, g_dim))]*(g_cluster_cnt+1)
-    r_labels = [None]*(g_cluster_cnt+1)*g_pred_cnt_per_cluster
+    r_labels = [None]*(g_cluster_cnt+g_out_cluster_cnt)*g_pred_cnt_per_cluster
     for i in range(0, len(labels)):
         label = labels[i]
         if(r_distance[label] < np.linalg.norm(centers[label]-pred_samples[i])):
@@ -234,7 +240,7 @@ def doTermProject():
     for i in range(0, len(r_labels)):
         if(matching_tbl[r_labels[i]] == int(i/100)):
             matching_cnt = matching_cnt + 1
-    print('Using K-means clustering with simple boundary, predict rate: ', matching_cnt/(g_cluster_cnt+1)/g_pred_cnt_per_cluster)
+    print('Using K-means clustering with simple boundary, predict rate: ', matching_cnt/(g_cluster_cnt+g_out_cluster_cnt)/g_pred_cnt_per_cluster)
     draw_points(r_pred_sample_groups, centers, radius = r_distance)
 
     # Check each point belongs to cluster or not.
@@ -253,7 +259,7 @@ def doTermProject():
     for i in range(0, len(labels)):
         if(matching_tbl[labels[i]] == int(i/100)):
             matching_cnt = matching_cnt + 1
-    print('Using K-means and interval, predict rate: ', matching_cnt/(g_cluster_cnt+1)/g_pred_cnt_per_cluster)
+    print('Using K-means and interval, predict rate: ', matching_cnt/(g_cluster_cnt+g_out_cluster_cnt)/g_pred_cnt_per_cluster)
 
     # Make cluster group of predict sample points using labels
     pred_sample_groups = [np.zeros(shape=(0, g_dim))]*(g_cluster_cnt+1)
@@ -268,14 +274,14 @@ def doTermProject():
     for i in range(0, g_cluster_cnt):
         pca_list[i] = PCA(n_components=3)
         pca_list[i].fit(train_sample_groups[i])
-        pca_center = pca_list[i].transform(centers[i].reshape(1, -1)).reshape(3)
+        pca_center = pca_list[i].transform(centers[i].reshape(1, -1)).reshape(g_dim)
         #pca_train_sample_groups[i] = pca_list[i].transform(train_sample_groups[i])
         #pca_intervals[i] = calc_section(pca_centers[i], pca_train_sample_groups[i])
         pca_intervals[i] = calc_section(pca_center, pca_list[i].transform(train_sample_groups[i]))
     
     for i in range(0, len(pca_labels)):
         cluster_idx = pca_labels[i]
-        sample = pca_list[pca_labels[i]].transform(pca_pred_samples[i].reshape(1, -1)).reshape(3)
+        sample = pca_list[pca_labels[i]].transform(pca_pred_samples[i].reshape(1, -1)).reshape(g_dim)
         for d in range(0, g_dim):
             if(sample[d] < pca_intervals[cluster_idx][d][0] or pca_intervals[cluster_idx][d][1] < sample[d]):
                 #cluster_idx = g_cluster_cnt
@@ -291,7 +297,7 @@ def doTermProject():
     for i in range(0, len(pca_labels)):
         if(matching_tbl[pca_labels[i]] == int(i/100)):
             matching_cnt = matching_cnt + 1
-    print('Using K-means clustering and intervals in pca, predict rate: ', matching_cnt/(g_cluster_cnt+1)/g_pred_cnt_per_cluster)
+    print('Using K-means clustering and intervals in pca, predict rate: ', matching_cnt/(g_cluster_cnt+g_out_cluster_cnt)/g_pred_cnt_per_cluster)
 
     # Make cluster group of predict sample points using labels
     pca_pred_sample_groups = [np.zeros(shape=(0, g_dim))]*(g_cluster_cnt+1)
