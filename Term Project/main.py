@@ -6,6 +6,7 @@ import matplotlib.markers as markers
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import scipy.stats
+from scipy.spatial.transform import Rotation as Rot
 from sklearn.decomposition import PCA
 import cv2
 
@@ -16,11 +17,32 @@ g_cluster_cnt = 12
 g_out_cluster_cnt = 3
 g_plot_fig_name = 0
 
-def create_points(means, stddevs, sample_cnt):
+def create_points(means, stddevs, sample_cnt, relations = None):
     data = np.zeros(shape=(sample_cnt,g_dim))
-    for idx in range(0, len(means)):
-        rands = np.random.normal(means[idx], stddevs[idx], sample_cnt)
-        data[:, idx] = rands
+    if(type(relations) != type(None)):
+        v3_points = np.random.normal(0, stddevs, (sample_cnt, len(stddevs)))
+        r = Rot.from_euler(seq='xyz', angles = relations, degrees=True)
+        '''
+        cosx = np.cos(np.radians(relations[0]))
+        cosy = np.cos(np.radians(relations[1]))
+        cosz = np.cos(np.radians(relations[2]))
+        sinx = np.sin(np.radians(relations[0]))
+        siny = np.sin(np.radians(relations[1]))
+        sinz = np.sin(np.radians(relations[2]))
+        '''
+        data = r.apply(v3_points)
+
+        '''
+        d = len(relations)
+        for i in range(0, len(relations)):
+            other_idx = (i+(d-1))%d
+            data[:, i] = v3_points[:, i]*relations[i] + v3_points[:, other_idx]*(1-relations[other_idx])
+        '''
+        data = data + means
+    else:
+        for idx in range(0, len(means)):
+            rands = np.random.normal(means[idx], stddevs[idx], sample_cnt)
+            data[:, idx] = rands
 
     return data
 
@@ -126,14 +148,16 @@ def doTermProject():
                         [3,3,3], 
                         ])
     '''
-    means = np.random.randint(-30, 31, (g_cluster_cnt,g_dim))
-    stddevs = np.random.randint(1, 6, (g_cluster_cnt,g_dim))
+    means = np.random.randint(-50, 51, (g_cluster_cnt,g_dim))
+    stddevs = np.random.randint(1, 10, (g_cluster_cnt,g_dim))
+    #relations = np.random.randint(1, 100, (g_cluster_cnt, g_dim))/100
+    relations = np.random.randint(1, 90, (g_cluster_cnt, g_dim))
 
     # Make training samples
     train_samples = np.zeros(shape=(g_cluster_cnt*g_train_cnt_per_cluster, g_dim))
     for col_idx in range(0, means.shape[0]):
         train_samples[col_idx*g_train_cnt_per_cluster:(col_idx+1)*g_train_cnt_per_cluster, :] = \
-         create_points(means[col_idx], stddevs[col_idx], g_train_cnt_per_cluster)
+         create_points(means[col_idx], stddevs[col_idx], g_train_cnt_per_cluster, relations[col_idx])
 
     # Make cluster group of sample points
     train_sample_groups = [None]*(g_cluster_cnt+1)
@@ -166,12 +190,14 @@ def doTermProject():
     means = np.vstack((means, np.array([-5, 5, 2])))
     stddevs = np.vstack((stddevs, np.array([4,1,2])))
     '''
-    means = np.vstack((means, np.random.randint(-30, 31, (g_out_cluster_cnt,g_dim))))
-    stddevs = np.vstack((stddevs, np.random.randint(1, 6, (g_out_cluster_cnt,g_dim))))
+    means = np.vstack((means, np.random.randint(-50, 51, (g_out_cluster_cnt,g_dim))))
+    stddevs = np.vstack((stddevs, np.random.randint(1, 10, (g_out_cluster_cnt,g_dim))))
+    #relations = np.vstack((relations, np.random.randint(1, 100, (g_out_cluster_cnt, g_dim))/100))
+    relations = np.vstack((relations, np.random.randint(1, 90, (g_out_cluster_cnt, g_dim))))
     pred_samples = np.zeros(shape=((g_cluster_cnt+g_out_cluster_cnt)*g_pred_cnt_per_cluster, g_dim)) # add 1 cluster
     for col_idx in range(0, means.shape[0]):
         pred_samples[col_idx*g_pred_cnt_per_cluster:(col_idx+1)*g_pred_cnt_per_cluster, :] = \
-            create_points(means[col_idx], stddevs[col_idx], g_pred_cnt_per_cluster)
+            create_points(means[col_idx], stddevs[col_idx], g_pred_cnt_per_cluster, relations[col_idx])
     pca_pred_samples = copy.deepcopy(pred_samples)
     
     # Do predict
@@ -310,6 +336,8 @@ def doTermProject():
     print(means)
     print('----stddevs----')
     print(stddevs)
+    print('---relations---')
+    print(relations)
 
     return True
 

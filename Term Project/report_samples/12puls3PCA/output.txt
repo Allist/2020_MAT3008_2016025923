@@ -1,0 +1,151 @@
+doTermProject start!
+-------------------- 1 --------------
+0 th cluster has  300 points
+1 th cluster has  300 points
+2 th cluster has  300 points
+3 th cluster has  300 points
+4 th cluster has  300 points
+5 th cluster has  300 points
+6 th cluster has  300 points
+7 th cluster has  300 points
+8 th cluster has  300 points
+9 th cluster has  300 points
+10 th cluster has  300 points
+11 th cluster has  300 points
+12 th cluster has  0 points
+-------------------- 2 --------------
+0 th cluster has  297 points
+1 th cluster has  304 points
+2 th cluster has  293 points
+3 th cluster has  300 points
+4 th cluster has  294 points
+5 th cluster has  299 points
+6 th cluster has  300 points
+7 th cluster has  301 points
+8 th cluster has  299 points
+9 th cluster has  300 points
+10 th cluster has  308 points
+11 th cluster has  305 points
+12 th cluster has  0 points
+Only using K-means clustering, predict rate:  0.7886666666666666
+-------------------- 3 --------------
+0 th cluster has  97 points
+1 th cluster has  101 points
+2 th cluster has  114 points
+3 th cluster has  100 points
+4 th cluster has  101 points
+5 th cluster has  100 points
+6 th cluster has  100 points
+7 th cluster has  299 points
+8 th cluster has  101 points
+9 th cluster has  100 points
+10 th cluster has  102 points
+11 th cluster has  185 points
+12 th cluster has  0 points
+Using K-means clustering with simple boundary, predict rate:  0.7933333333333333
+-------------------- 4 --------------
+0 th cluster has  97 points
+1 th cluster has  101 points
+2 th cluster has  108 points
+3 th cluster has  100 points
+4 th cluster has  101 points
+5 th cluster has  100 points
+6 th cluster has  100 points
+7 th cluster has  291 points
+8 th cluster has  101 points
+9 th cluster has  100 points
+10 th cluster has  102 points
+11 th cluster has  178 points
+12 th cluster has  21 points
+Using K-means and interval, predict rate:  0.7959999999999999
+-------------------- 5 --------------
+0 th cluster has  95 points
+1 th cluster has  97 points
+2 th cluster has  94 points
+3 th cluster has  96 points
+4 th cluster has  97 points
+5 th cluster has  90 points
+6 th cluster has  96 points
+7 th cluster has  181 points
+8 th cluster has  94 points
+9 th cluster has  91 points
+10 th cluster has  96 points
+11 th cluster has  92 points
+12 th cluster has  281 points
+-------------------- 6 --------------
+0 th cluster has  297 points
+1 th cluster has  304 points
+2 th cluster has  293 points
+3 th cluster has  300 points
+4 th cluster has  294 points
+5 th cluster has  299 points
+6 th cluster has  300 points
+7 th cluster has  301 points
+8 th cluster has  299 points
+9 th cluster has  300 points
+10 th cluster has  308 points
+11 th cluster has  305 points
+12 th cluster has  0 points
+Using K-means clustering and intervals in pca, predict rate:  0.804
+-------------------- 7 --------------
+0 th cluster has  93 points
+1 th cluster has  98 points
+2 th cluster has  96 points
+3 th cluster has  94 points
+4 th cluster has  97 points
+5 th cluster has  91 points
+6 th cluster has  97 points
+7 th cluster has  187 points
+8 th cluster has  96 points
+9 th cluster has  96 points
+10 th cluster has  97 points
+11 th cluster has  84 points
+12 th cluster has  274 points
+-----means-----
+[[ 47 -50   5]
+ [ 10 -44  45]
+ [ -1   7  44]
+ [ 29   5 -47]
+ [-11   5 -35]
+ [ -5 -23  12]
+ [-17  40  -8]
+ [ 11 -41 -43]
+ [-42 -42  34]
+ [-49 -17  39]
+ [-13 -14  -7]
+ [-23 -49  35]
+ [ 18  20  42]
+ [ -5  -1  44]
+ [-19 -36   4]]
+----stddevs----
+[[8 9 4]
+ [8 6 8]
+ [6 7 5]
+ [5 4 5]
+ [1 4 3]
+ [6 9 1]
+ [9 4 9]
+ [3 6 9]
+ [6 8 4]
+ [5 5 2]
+ [9 5 2]
+ [3 4 4]
+ [9 6 7]
+ [4 6 9]
+ [1 5 4]]
+---relations---
+[[51 32 13]
+ [75  7 42]
+ [42 72 19]
+ [49 74 14]
+ [44 14 34]
+ [15 81 34]
+ [18 46 85]
+ [87 22 84]
+ [75 16 15]
+ [ 9 68 29]
+ [71 45 66]
+ [21 48 15]
+ [25 23 24]
+ [76 44 37]
+ [12 23 32]]
